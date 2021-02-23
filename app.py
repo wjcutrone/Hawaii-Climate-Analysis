@@ -64,15 +64,15 @@ def tobs():
     recent_temp = [{x[0]: x[1]} for x in recent_temp]
     return jsonify(recent_temp)
 
-# def start():
-#     session, Measurement, Station = get_session()
-#     # Get user's desired starting date
-#     start_date = input('Please enter a start date (yyyy-mm-dd) no earlier than January 1st 2010')
-#     start_date_requested = session.query(Measurement.date).filter(Measurement.date==start_date).first()
+@app.route('/api/v1.0/<start>)
+def start(start_date):
+    session, Measurement, Station = get_session()
+    # Get user's desired starting date
+    start_date = session.query(Measurement.date).filter(Measurement.date==start_date).first()
 #     return jsonify(start_date_requested)
 
 # @app.route('/api/v1.0/<start>/<end>')
-# def end():
+# def range(start, end):
 #     session, Measurement, Station = get_session()
 #     #Get the user's desired end date
 #     end_date = input("Please enter an end date (yyyy-mm-dd) up to August 23 2017")
