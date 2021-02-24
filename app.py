@@ -30,7 +30,7 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     # Find the most recent date in the data set.
-    return (f"Welcome to the Vacation App<br/>"
+    return (f"Welcome to the Hawaii Vacation App!<br/>"
             f"Available Routes:<br/>"
             f"Precipitation: /api/v1.0/precipitation <br/>"
             f"Stations: /api/v1.0/stations <br/>"
@@ -42,7 +42,6 @@ def index():
 @app.route('/api/v1.0/precipitation')
 def precipitation():
     earliest_date = dt.date(2017, 8, 23) - dt.timedelta(days = 365)
-    # Perform a query to retrieve the date and precipitation scores
     rain_dates = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date>=earliest_date).all()
     precip = {date: prcp for date, prcp in rain_dates}
     return jsonify(precip)
