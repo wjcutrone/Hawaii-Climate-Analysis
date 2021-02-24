@@ -6,42 +6,49 @@ from sqlalchemy import create_engine, func
 from flask import Flask
 from flask import jsonify
 import datetime as dt
+import numpy as np
 
-def get_session():
-    # create engine to hawaii.sqlite
-    engine = create_engine("sqlite:///hawaii.sqlite")
-    conn = engine.connect()
 
-    # reflect an existing database into a new model
-    Base = automap_base()
-    # reflect the tables
-    Base.prepare(engine, reflect=True)
+# create engine to hawaii.sqlite
+engine = create_engine("sqlite:///hawaii.sqlite")
 
-    # View all of the classes that automap found
-    Base.classes.keys()
+# reflect an existing database into a new model
+Base = automap_base()
+# reflect the tables
+Base.prepare(engine, reflect=True)
 
-    # Save references to each table
-    Measurement = Base.classes.measurement
-    Station = Base.classes.station
+# Save references to each table
+Measurement = Base.classes.measurement
+Station = Base.classes.station
 
-    # Create our session (link) from Python to the DB
-    session = Session(engine)
-    return session, Measurement, Station   
+# Create our session (link) from Python to the DB
+session = Session(engine)
+      
 
 app = Flask(__name__)
 
+@app.route('/')
+def index():
+    # Find the most recent date in the data set.
+    return (f"Welcome to the Vacation App<br/>"
+            f"Available Routes:<br/>"
+            f"Precipitation: /api/v1.0/precipitation <br/>"
+            f"Stations: /api/v1.0/stations <br/>"
+            f"Temperatures: /api/v1.0/tobs <br/>"
+            f"Date Range:/api/v1.0/<start>/<end>"
+           )
+    
+
 @app.route('/api/v1.0/precipitation')
 def precipitation():
-    session, Measurement, Station = get_session()
     earliest_date = dt.date(2017, 8, 23) - dt.timedelta(days = 365)
     # Perform a query to retrieve the date and precipitation scores
     rain_dates = session.query(Measurement.date, Measurement.prcp).filter(Measurement.date>=earliest_date).all()
-    rain_dates = [{x[0]:x[1]} for x in rain_dates]
-    return jsonify(rain_dates)
+    precip = {date: prcp for date, prcp in rain_dates}
+    return jsonify(precip)
 
 @app.route('/api/v1.0/stations')
 def station():
-    session, Measurement, Station = get_session()
     station_names = session.query(Station.station, Station.name, Station.latitude, Station.longitude, Station.elevation).all()
     station_names = [{
         'id': x[0],
@@ -54,7 +61,6 @@ def station():
 
 @app.route('/api/v1.0/tobs')
 def tobs():
-    session, Measurement, Station = get_session()
     earliest_date = dt.date(2017, 8, 23) - dt.timedelta(days = 365)
     active_stations = session.query(Measurement.station, func.count(Measurement.station)).group_by(Measurement.station).\
                         order_by(func.count(Measurement.station).desc()).all()
@@ -64,35 +70,20 @@ def tobs():
     recent_temp = [{x[0]: x[1]} for x in recent_temp]
     return jsonify(recent_temp)
 
-@app.route('/api/v1.0/<start>)
-def start(start_date):
-    session, Measurement, Station = get_session()
-    # Get user's desired starting date
-    start_date = session.query(Measurement.date).filter(Measurement.date==start_date).first()
-#     return jsonify(start_date_requested)
+@app.route('/api/v1.0/<start>')
+@app.route('/api/v1.0/<start>/<end>')          
+def start(start=None, end=None):
+    if not end:
+        temp_range = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+                    filter(Measurement.date>=start).all()
+        temps = list(np.ravel(temp_range))
+        return jsonify(temps)
 
-# @app.route('/api/v1.0/<start>/<end>')
-# def range(start, end):
-#     session, Measurement, Station = get_session()
-#     #Get the user's desired end date
-#     end_date = input("Please enter an end date (yyyy-mm-dd) up to August 23 2017")
-#     end_date_requested = session.query(Measurement.date).filter(Measurement.date==end_date).first()
-#     # Get temperature values for the users date range
-#     temp_range = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs).\
-#                    filter(Measurement.date>=start_date_requested).filter(Measurement.date<=end_date_requested).all()
-#     return jsonify(temp_range)
-                              
+    temp_range = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).\
+                   filter(Measurement.date>=start).filter(Measurement.date<=end).all()
+    temps=list(np.ravel(temp_range))
+    return jsonify(temps=temps)
                                
-    
-
-
-@app.route('/')
-def index():
-    session, Measurement, Station = get_session()
-    # Find the most recent date in the data set.
-    return "Welcome to the Vacation App"
-    
-    
 
 if __name__ == "__main__":
     app.run(debug=True)
